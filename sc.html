@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Coinbase C</title>
+</head>
+
+<body>
+
+<h2>Coinbase C</h2>
+
+<pre id="out">Checking...</pre>
+
+<script>
+
+const out = document.getElementById("out");
+
+function log(x) {
+    out.textContent += x + "\n";
+}
+
+(async () => {
+
+    log("=== C ===");
+    log("");
+    log("origin = " + location.origin);
+    log("href = " + location.href);
+
+    const p = window.ethereum;
+
+    log(
+        "ethereum = " +
+        String(!!p)
+    );
+
+    log(
+        "isCoinbaseWallet = " +
+        String(!!p?.isCoinbaseWallet)
+    );
+
+    log(
+        "isCoinbaseBrowser = " +
+        String(!!p?.isCoinbaseBrowser)
+    );
+
+    if (!p?.request) {
+        log("");
+        log("NO PROVIDER");
+        return;
+    }
+
+    try {
+
+        const accounts =
+            await p.request({
+                method: "eth_accounts"
+            });
+
+        log("");
+        log(
+            "eth_accounts = " +
+            JSON.stringify(accounts)
+        );
+
+    } catch (e) {
+
+        log(
+            "ERROR = " +
+            (e?.message || String(e))
+        );
+    }
+
+})();
+
+</script>
+
+</body>
+</html>
