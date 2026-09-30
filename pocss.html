@@ -1,0 +1,117 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>Coinbase UXSS Boundary - B</title>
+
+<h2>Coinbase UXSS Boundary - B</h2>
+
+<pre id="out">Testing...</pre>
+
+<script>
+
+const out = document.getElementById("out");
+
+function log(x) {
+  out.textContent += "\n" + x;
+}
+
+log("=== B CONTEXT ===");
+
+log(
+  "origin = " +
+  location.origin
+);
+
+log(
+  "href = " +
+  location.href
+);
+
+log(
+  "window.ethereum = " +
+  String(!!window.ethereum)
+);
+
+log(
+  "isCoinbaseWallet = " +
+  String(window.ethereum?.isCoinbaseWallet)
+);
+
+log(
+  "isCoinbaseBrowser = " +
+  String(window.ethereum?.isCoinbaseBrowser)
+);
+
+(async () => {
+
+  const p = window.ethereum;
+
+  if (!p?.request) {
+
+    log("provider request = NO");
+
+    return;
+  }
+
+  log("provider request = YES");
+
+  try {
+
+    const chain =
+      await p.request({
+        method: "eth_chainId"
+      });
+
+    log(
+      "eth_chainId = " +
+      chain
+    );
+
+  } catch (e) {
+
+    log(
+      "chain ERROR = " +
+      (e?.message || String(e))
+    );
+  }
+
+  try {
+
+    const accounts =
+      await p.request({
+        method: "eth_accounts"
+      });
+
+    log(
+      "eth_accounts = " +
+      JSON.stringify(accounts)
+    );
+
+    if (
+      Array.isArray(accounts) &&
+      accounts.length
+    ) {
+
+      log(
+        "!!! ACCOUNT AVAILABLE IN B CONTEXT !!!"
+      );
+
+    } else {
+
+      log(
+        "No authorized account in B."
+      );
+    }
+
+  } catch (e) {
+
+    log(
+      "accounts ERROR = " +
+      (e?.message || String(e))
+    );
+  }
+
+})();
+
+</script>
