@@ -1,0 +1,56 @@
+<button onclick="testSign()">TEST PERSONAL_SIGN</button>
+
+<script>
+async function testSign() {
+    const p = window.ethereum;
+
+    const out = [];
+
+    out.push("origin = " + location.origin);
+    out.push("document.domain = " + document.domain);
+
+    if (!p?.request) {
+        out.push("NO PROVIDER");
+        alert(out.join("\n"));
+        return;
+    }
+
+    const accounts = await p.request({
+        method: "eth_accounts"
+    });
+
+    out.push("accounts = " + JSON.stringify(accounts));
+
+    if (!accounts?.[0]) {
+        out.push("NO ACCOUNT");
+        alert(out.join("\n"));
+        return;
+    }
+
+    const msg =
+        "0x434f494e424153455f555853535f544553545f4f4e4c59";
+
+    try {
+
+        const sig = await p.request({
+            method: "personal_sign",
+            params: [
+                msg,
+                accounts[0]
+            ]
+        });
+
+        out.push("PERSONAL_SIGN = APPROVED");
+        out.push("signature = " + String(sig).slice(0, 24));
+
+    } catch (e) {
+
+        out.push(
+            "PERSONAL_SIGN = " +
+            (e?.message || String(e))
+        );
+    }
+
+    alert(out.join("\n"));
+}
+</script>
