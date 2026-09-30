@@ -1,0 +1,90 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Coinbase Race - C</title>
+</head>
+
+<body>
+
+<h2>Coinbase Race - C</h2>
+
+<pre id="out"></pre>
+
+<script>
+const out = document.getElementById("out");
+
+function log(x) {
+  out.textContent += x + "\n";
+}
+
+(async () => {
+
+  log("=== C CONTEXT ===");
+  log("");
+  log("origin = " + location.origin);
+  log("href = " + location.href);
+  log("ethereum = " + !!window.ethereum);
+
+  const p = window.ethereum;
+
+  log(
+    "isCoinbaseWallet = " +
+    !!p?.isCoinbaseWallet
+  );
+
+  log(
+    "isCoinbaseBrowser = " +
+    !!p?.isCoinbaseBrowser
+  );
+
+  if (!p?.request) {
+    log("");
+    log("No provider.");
+    return;
+  }
+
+  try {
+
+    const chain =
+      await p.request({
+        method: "eth_chainId"
+      });
+
+    log("");
+    log("chainId = " + chain);
+
+  } catch (e) {
+
+    log(
+      "chain ERROR = " +
+      (e?.message || String(e))
+    );
+  }
+
+  try {
+
+    const accounts =
+      await p.request({
+        method: "eth_accounts"
+      });
+
+    log(
+      "accounts = " +
+      JSON.stringify(accounts)
+    );
+
+  } catch (e) {
+
+    log(
+      "accounts ERROR = " +
+      (e?.message || String(e))
+    );
+  }
+
+})();
+</script>
+
+</body>
+</html>
