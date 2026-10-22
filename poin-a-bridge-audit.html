@@ -1,0 +1,151 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Poin A — API & Bridge Inventory</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 900px;
+      margin: 32px auto;
+      padding: 0 18px;
+      background: #111827;
+      color: #e5e7eb;
+    }
+    h1 { font-size: 1.6rem; }
+    p { line-height: 1.6; color: #cbd5e1; }
+    button {
+      padding: 10px 16px;
+      margin: 5px 5px 12px 0;
+      border: 0;
+      border-radius: 7px;
+      cursor: pointer;
+      background: #2563eb;
+      color: white;
+    }
+    button.secondary { background: #374151; }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      background: #030712;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      padding: 16px;
+      min-height: 140px;
+    }
+    .note {
+      border-left: 3px solid #f59e0b;
+      padding: 8px 12px;
+      background: #1f2937;
+    }
+    code { color: #93c5fd; }
+  </style>
+</head>
+<body>
+  <h1>Poin A — API & Bridge Inventory</h1>
+
+  <p>
+    Inventarisasi kandidat API JavaScript dan properti global
+    yang terlihat pada konteks halaman saat ini. Pemeriksaan ini
+    bersifat pasif: tidak memanggil metode bridge yang ditemukan.
+  </p>
+
+  <div class="note">
+    Jalankan hanya pada aplikasi dan halaman yang kamu berwenang
+    untuk audit. Hasil dari halaman biasa tidak otomatis mewakili
+    seluruh API native yang tersedia di WebView.
+  </div>
+
+  <h2>1. Kandidat API</h2>
+  <button id="scanButton">Mulai inventarisasi</button>
+  <button id="exportButton" class="secondary">Ekspor JSON</button>
+  <button id="clearButton" class="secondary">Bersihkan</button>
+
+  <pre id="output">Belum ada pemeriksaan.</pre>
+
+  <script>
+    "use strict";
+
+    const candidates = [
+      "addJavascriptInterface",
+      "evaluateJavascript",
+      "postMessage",
+      "getUserInfo",
+      "requestCustom",
+      "sapphireWebViewBridge",
+      "KindredWebInterface"
+    ];
+
+    let lastReport = null;
+
+    function inspectGlobals() {
+      const results = [];
+
+      for (const name of candidates) {
+        let status = "Tidak terlihat";
+
+        try {
+          if (name in globalThis) {
+            const value = globalThis[name];
+
+            status =
+              typeof value === "function"
+                ? "Properti fungsi terlihat"
+                : value !== null && typeof value === "object"
+                  ? "Properti objek terlihat"
+                  : "Properti terlihat (" + typeof value + ")";
+          }
+        } catch (error) {
+          status = "Tidak dapat diperiksa";
+        }
+
+        results.push({ name, status });
+      }
+
+      return {
+        timestamp: new Date().toISOString(),
+        pageOrigin: location.origin,
+        pageURL: location.href,
+        userAgent: navigator.userAgent,
+        note:
+          "Pemeriksaan pasif. Tidak ada metode bridge yang dipanggil.",
+        candidates: results
+      };
+    }
+
+    document.getElementById("scanButton").addEventListener("click", () => {
+      lastReport = inspectGlobals();
+      document.getElementById("output").textContent =
+        JSON.stringify(lastReport, null, 2);
+    });
+
+    document.getElementById("exportButton").addEventListener("click", () => {
+      if (!lastReport) {
+        document.getElementById("output").textContent =
+          "Jalankan inventarisasi terlebih dahulu.";
+        return;
+      }
+
+      const blob = new Blob(
+        [JSON.stringify(lastReport, null, 2)],
+        { type: "application/json" }
+      );
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "poin-a-bridge-inventory.json";
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById("clearButton").addEventListener("click", () => {
+      lastReport = null;
+      document.getElementById("output").textContent =
+        "Hasil inventarisasi telah dibersihkan.";
+    });
+  </script>
+</body>
+</html>
