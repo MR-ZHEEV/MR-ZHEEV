@@ -1,0 +1,710 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mobile Browser API & Bridge Scanner</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0b1020;
+    --panel: #141c30;
+    --border: #2b3854;
+    --text: #e8edf7;
+    --muted: #9aa9c2;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+    --red: #fb7185;
+    --blue: #7dd3fc;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 20px;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.55 system-ui, sans-serif;
+  }
+  main { max-width: 1000px; margin: auto; }
+  h1 { font-size: 24px; margin: 0 0 8px; }
+  h2 { font-size: 17px; margin: 0 0 12px; }
+  p { color: var(--muted); }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 14px 0;
+  }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  button {
+    background: #243653;
+    color: white;
+    border: 1px solid #405777;
+    border-radius: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  button.primary { background: #075985; }
+  button:hover { filter: brightness(1.15); }
+  input, select {
+    background: #0b1020;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 9px;
+    width: 100%;
+  }
+  label { display: block; margin: 10px 0 5px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+  }
+  .metric {
+    background: #0b1020;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+  }
+  .metric strong { display: block; font-size: 23px; }
+  .muted { color: var(--muted); }
+  .status { font-weight: 700; }
+  .found { color: var(--green); }
+  .missing { color: var(--muted); }
+  .review { color: var(--yellow); }
+  .error { color: var(--red); }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td {
+    text-align: left;
+    vertical-align: top;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border);
+    overflow-wrap: anywhere;
+  }
+  th { color: var(--muted); font-weight: 600; }
+  code, pre {
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  }
+  pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 450px;
+    overflow: auto;
+    background: #080c17;
+    border-radius: 8px;
+    padding: 12px;
+  }
+  .warning {
+    border-left: 3px solid var(--yellow);
+    padding-left: 12px;
+  }
+  .small { font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>API & Bridge Scanner</h1>
+  <p>
+    Inventarisasi kandidat JavaScript bridge pada browser Android/iOS,
+    WebKit WebView, dan aplikasi hybrid.
+  </p>
+
+  <section class="panel">
+    <h2>Environment</h2>
+    <div class="grid">
+      <div class="metric">
+        <span class="muted">Platform hint</span>
+        <strong id="platform">—</strong>
+      </div>
+      <div class="metric">
+        <span class="muted">Candidate ditemukan</span>
+        <strong id="foundCount">0</strong>
+      </div>
+      <div class="metric">
+        <span class="muted">Global tambahan</span>
+        <strong id="extraCount">0</strong>
+      </div>
+    </div>
+    <p id="environment" class="small"></p>
+    <p class="warning small">
+      Pemindaian bersifat pasif. Scanner tidak mengirim pesan ke bridge,
+      memanggil method native, atau menjalankan payload.
+    </p>
+    <div class="actions">
+      <button class="primary" id="scanBtn">Scan ulang</button>
+      <button id="jsonBtn">Ekspor JSON</button>
+      <button id="copyBtn">Salin JSON</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Filter hasil</h2>
+    <div class="grid">
+      <div>
+        <label for="filterText">Cari nama atau detail</label>
+        <input id="filterText" placeholder="Contoh: webkit, native, flutter">
+      </div>
+      <div>
+        <label for="filterStatus">Status</label>
+        <select id="filterStatus">
+          <option value="all">Semua status</option>
+          <option value="found">Terdeteksi</option>
+          <option value="missing">Tidak terdeteksi</option>
+          <option value="review">Perlu pemeriksaan native</option>
+          <option value="error">Tidak dapat diperiksa</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Kandidat JavaScript bridge</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Nama / API</th>
+            <th>Status</th>
+            <th>Detail</th>
+          </tr>
+        </thead>
+        <tbody id="results">
+          <tr><td colspan="3">Belum dipindai.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Global tambahan yang relevan</h2>
+    <p class="small">
+      Nama properti global yang menyerupai bridge. Nama yang cocok tidak
+      otomatis berarti properti tersebut merupakan bridge native.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Global</th><th>Jenis descriptor</th><th>Lokasi</th></tr>
+        </thead>
+        <tbody id="extras">
+          <tr><td colspan="3">Belum dipindai.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>API native yang perlu diperiksa dari source</h2>
+    <p>
+      API berikut bukan sesuatu yang dapat dipastikan keberadaannya hanya
+      dengan mencari nama global pada halaman web.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Platform</th><th>API / registrasi</th><th>Lokasi pemeriksaan</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Android</td>
+            <td><code>WebView.addJavascriptInterface()</code></td>
+            <td>Kode Java/Kotlin yang mengonfigurasi WebView</td>
+          </tr>
+          <tr>
+            <td>Android</td>
+            <td><code>WebViewCompat.addWebMessageListener()</code></td>
+            <td>Registrasi listener dan allowed origin rules</td>
+          </tr>
+          <tr>
+            <td>Android</td>
+            <td><code>WebView.postWebMessage()</code></td>
+            <td>Komunikasi pesan native–web</td>
+          </tr>
+          <tr>
+            <td>Android</td>
+            <td><code>evaluateJavascript()</code></td>
+            <td>Kode native yang menjalankan JavaScript pada halaman</td>
+          </tr>
+          <tr>
+            <td>iOS / WebKit</td>
+            <td><code>WKUserContentController</code></td>
+            <td>Konfigurasi user content controller</td>
+          </tr>
+          <tr>
+            <td>iOS / WebKit</td>
+            <td><code>add(_:name:)</code> / <code>WKScriptMessageHandler</code></td>
+            <td>Nama handler yang didaftarkan dan implementasinya</td>
+          </tr>
+          <tr>
+            <td>iOS / WebKit</td>
+            <td><code>WKScriptMessageHandlerWithReply</code></td>
+            <td>Handler pesan yang mendukung balasan</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>JSON report</h2>
+    <pre id="jsonOutput">Jalankan scan untuk membuat laporan.</pre>
+  </section>
+
+  <p class="small">
+    Catatan: hasil bergantung pada konteks halaman saat ini. Browser dapat
+    menyembunyikan properti, memakai nama bridge khusus, atau memisahkan
+    bridge dari JavaScript halaman. User-Agent hanya petunjuk, bukan bukti
+    pasti jenis browser maupun WebView.
+  </p>
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  const $ = id => document.getElementById(id);
+
+  const candidates = [
+    {
+      name: "window.webkit",
+      path: "webkit",
+      category: "iOS / WebKit",
+      note: "Namespace yang sering dijumpai pada WebKit; bukan bukti bridge aplikasi."
+    },
+    {
+      name: "window.webkit.messageHandlers",
+      path: "webkit.messageHandlers",
+      category: "iOS / WebKit",
+      note: "Tempat handler WKScriptMessageHandler yang terekspos ke halaman dapat tersedia."
+    },
+    {
+      name: "window.Android",
+      path: "Android",
+      category: "Android",
+      note: "Nama bridge yang umum dipakai aplikasi; nama sebenarnya dapat berbeda."
+    },
+    {
+      name: "window.NativeBridge",
+      path: "NativeBridge",
+      category: "Custom bridge",
+      note: "Nama konvensional, bukan nama standar."
+    },
+    {
+      name: "window.AndroidBridge",
+      path: "AndroidBridge",
+      category: "Android",
+      note: "Nama konvensional, bukan nama standar."
+    },
+    {
+      name: "window.WebViewBridge",
+      path: "WebViewBridge",
+      category: "Custom bridge",
+      note: "Nama konvensional, bukan nama standar."
+    },
+    {
+      name: "window.ReactNativeWebView",
+      path: "ReactNativeWebView",
+      category: "React Native",
+      note: "Kandidat bridge React Native WebView."
+    },
+    {
+      name: "window.flutter_inappwebview",
+      path: "flutter_inappwebview",
+      category: "Flutter",
+      note: "Kandidat bridge Flutter InAppWebView."
+    },
+    {
+      name: "window.flutterJavascriptChannel",
+      path: "flutterJavascriptChannel",
+      category: "Flutter",
+      note: "Nama kandidat; implementasi dapat memakai nama channel lain."
+    },
+    {
+      name: "window.cordova",
+      path: "cordova",
+      category: "Cordova",
+      note: "Objek yang mungkin menunjukkan lingkungan Cordova."
+    },
+    {
+      name: "window.Capacitor",
+      path: "Capacitor",
+      category: "Capacitor",
+      note: "Objek yang mungkin menunjukkan lingkungan Capacitor."
+    },
+    {
+      name: "window.webkit.messageHandlers.<nama>",
+      path: "webkit.messageHandlers",
+      category: "iOS / WebKit",
+      note: "Nama handler yang terlihat dicoba diinventarisasi tanpa memanggil postMessage."
+    },
+    {
+      name: "window.safari",
+      path: "safari",
+      category: "Safari",
+      note: "Namespace Safari; bukan bukti bridge native yang dapat dipanggil."
+    },
+    {
+      name: "window.external",
+      path: "external",
+      category: "Browser / legacy",
+      note: "Namespace browser legacy yang tidak selalu terkait bridge."
+    }
+  ];
+
+  const nativeOnly = [
+    "Android WebView.addJavascriptInterface()",
+    "Android WebViewCompat.addWebMessageListener()",
+    "Android WebView.postWebMessage()",
+    "Android WebView.evaluateJavascript()",
+    "iOS WKUserContentController.add(_:name:)",
+    "iOS WKScriptMessageHandler",
+    "iOS WKScriptMessageHandlerWithReply"
+  ];
+
+  let report = null;
+
+  // Membaca descriptor tanpa mengakses properti melalui root[key].
+  // Getter tidak dipanggil. Pemeriksaan proxy/host object tetap memiliki batasan.
+  function safeDescriptor(root, key) {
+    try {
+      let current = root;
+      let depth = 0;
+
+      while (current && depth < 8) {
+        const desc = Object.getOwnPropertyDescriptor(current, key);
+
+        if (desc) {
+          return {
+            found: true,
+            owner: current === root ? "own property" : "prototype",
+            descriptor: desc
+          };
+        }
+
+        current = Object.getPrototypeOf(current);
+        depth++;
+      }
+
+      return { found: false };
+    } catch (e) {
+      return {
+        found: false,
+        error: String(e && e.message ? e.message : e)
+      };
+    }
+  }
+
+  function resolveDataPath(path) {
+    const parts = path.split(".");
+    let current = window;
+    let location = "window";
+
+    for (const part of parts) {
+      const result = safeDescriptor(current, part);
+
+      if (result.error) {
+        return { status: "error", detail: result.error };
+      }
+
+      if (!result.found) {
+        return {
+          status: "missing",
+          detail: "Properti tidak ditemukan melalui descriptor."
+        };
+      }
+
+      const desc = result.descriptor;
+
+      if (!Object.prototype.hasOwnProperty.call(desc, "value")) {
+        return {
+          status: "review",
+          detail: "Properti accessor ditemukan; nilainya tidak dibaca agar getter tidak berjalan."
+        };
+      }
+
+      current = desc.value;
+      location += "." + part;
+
+      if (current === null || current === undefined) {
+        return {
+          status: "missing",
+          detail: "Properti ditemukan, tetapi nilai data adalah null/undefined."
+        };
+      }
+    }
+
+    return {
+      status: "found",
+      detail: "Properti dapat diakses melalui data descriptor.",
+      value: current,
+      location
+    };
+  }
+
+  function descriptorKind(desc) {
+    if (!desc) return "unknown";
+    if (Object.prototype.hasOwnProperty.call(desc, "value")) {
+      return typeof desc.value;
+    }
+    return "accessor (getter/setter)";
+  }
+
+  function scanExtraGlobals() {
+    const matches = [];
+    let names;
+
+    try {
+      names = Object.getOwnPropertyNames(window);
+    } catch (e) {
+      return {
+        matches,
+        error: String(e && e.message ? e.message : e)
+      };
+    }
+
+    const pattern =
+      /bridge|webview|webkit|native|flutter|cordova|capacitor|messagehandler|javascriptinterface/i;
+
+    for (const name of names) {
+      if (!pattern.test(name)) continue;
+
+      const desc = safeDescriptor(window, name);
+      matches.push({
+        name,
+        kind: desc.found
+          ? descriptorKind(desc.descriptor)
+          : (desc.error ? "inspection error" : "unknown"),
+        location: desc.found ? desc.owner : "window",
+        error: desc.error || null
+      });
+    }
+
+    return { matches, error: null };
+  }
+
+  function scan() {
+    const ua = navigator.userAgent || "";
+    const platform = /iPhone|iPad|iPod/i.test(ua)
+      ? "iOS hint"
+      : /Android/i.test(ua)
+        ? "Android hint"
+        : /Macintosh|Mac OS X/i.test(ua)
+          ? "Apple desktop hint"
+          : /Windows/i.test(ua)
+            ? "Windows hint"
+            : "Unknown / other";
+
+    const results = candidates.map(candidate => {
+      const result = resolveDataPath(candidate.path);
+
+      return {
+        name: candidate.name,
+        path: candidate.path,
+        category: candidate.category,
+        status: result.status,
+        detail: result.detail,
+        location: result.location || null,
+        valueType: result.status === "found"
+          ? typeof result.value
+          : null,
+        note: candidate.note
+      };
+    });
+
+    // Jika messageHandlers terlihat sebagai objek data, coba inventarisasi
+    // nama properti. Tidak ada handler yang dipanggil.
+    const handlerResult = resolveDataPath("webkit.messageHandlers");
+    const visibleHandlerNames = [];
+    let handlerEnumerationNote =
+      "Nama handler tidak dapat dipastikan dari halaman ini.";
+
+    if (
+      handlerResult.status === "found" &&
+      handlerResult.value !== null &&
+      (typeof handlerResult.value === "object" ||
+       typeof handlerResult.value === "function")
+    ) {
+      try {
+        const names = Object.getOwnPropertyNames(handlerResult.value);
+        visibleHandlerNames.push(...names);
+        handlerEnumerationNote =
+          "Nama properti yang terlihat berhasil diinventarisasi; ini tidak menjamin daftar handler lengkap.";
+      } catch (e) {
+        handlerEnumerationNote =
+          "Enumerasi nama gagal: " +
+          String(e && e.message ? e.message : e);
+      }
+    }
+
+    const extraScan = scanExtraGlobals();
+
+    report = {
+      scanner: "Mobile Browser API & Bridge Scanner",
+      version: "1.0.0",
+      timestamp: new Date().toISOString(),
+      page: {
+        origin: location.origin,
+        href: location.href,
+        secureContext: window.isSecureContext,
+        userAgent: ua,
+        platformHint: platform
+      },
+      summary: {
+        candidatesChecked: results.length,
+        candidatesDetected: results.filter(r => r.status === "found").length,
+        candidatesMissing: results.filter(r => r.status === "missing").length,
+        candidatesRequireReview: results.filter(r => r.status === "review").length,
+        candidatesWithErrors: results.filter(r => r.status === "error").length,
+        extraGlobalsFound: extraScan.matches.length
+      },
+      candidateResults: results,
+      visibleWebKitHandlerPropertyNames: visibleHandlerNames,
+      handlerEnumerationNote,
+      extraBridgeLikeGlobals: extraScan.matches,
+      extraGlobalScanError: extraScan.error,
+      nativeApisRequiringSourceInspection: nativeOnly,
+      limitations: [
+        "Tidak memanggil method bridge atau mengirim pesan.",
+        "Tidak memanggil getter untuk membaca nilai properti.",
+        "Tidak dapat membuktikan ada atau tidaknya bridge native yang tidak terekspos ke JavaScript.",
+        "User-Agent dan nama global hanya petunjuk, bukan identifikasi platform yang pasti.",
+        "Nama handler yang terlihat mungkin tidak mencakup semua handler yang terdaftar.",
+        "Proxy dan objek host dapat membatasi pemeriksaan descriptor atau enumerasi."
+      ]
+    };
+
+    $("platform").textContent = platform;
+    $("foundCount").textContent = report.summary.candidatesDetected;
+    $("extraCount").textContent = extraScan.matches.length;
+    $("environment").textContent =
+      "Origin: " + location.origin +
+      " | Secure context: " + String(window.isSecureContext) +
+      " | UA: " + ua;
+
+    renderResults();
+    renderExtras();
+
+    $("jsonOutput").textContent = JSON.stringify(report, null, 2);
+  }
+
+  function statusLabel(status) {
+    const labels = {
+      found: ["Terdeteksi", "found"],
+      missing: ["Tidak terdeteksi", "missing"],
+      review: ["Perlu pemeriksaan", "review"],
+      error: ["Gagal diperiksa", "error"]
+    };
+    return labels[status] || [status, ""];
+  }
+
+  function renderResults() {
+    if (!report) return;
+
+    const textFilter = $("filterText").value.trim().toLowerCase();
+    const statusFilter = $("filterStatus").value;
+
+    const rows = report.candidateResults.filter(item => {
+      const haystack = [
+        item.name, item.path, item.category, item.detail, item.note
+      ].join(" ").toLowerCase();
+
+      return (!textFilter || haystack.includes(textFilter)) &&
+        (statusFilter === "all" || item.status === statusFilter);
+    });
+
+    $("results").innerHTML = "";
+
+    if (!rows.length) {
+      $("results").innerHTML =
+        '<tr><td colspan="3">Tidak ada hasil yang cocok.</td></tr>';
+      return;
+    }
+
+    for (const item of rows) {
+      const tr = document.createElement("tr");
+      const name = document.createElement("td");
+      const status = document.createElement("td");
+      const detail = document.createElement("td");
+
+      name.textContent = item.name + " (" + item.category + ")";
+      const [label, css] = statusLabel(item.status);
+      status.textContent = label;
+      status.className = "status " + css;
+      detail.textContent = item.detail + " " + item.note;
+
+      tr.append(name, status, detail);
+      $("results").appendChild(tr);
+    }
+  }
+
+  function renderExtras() {
+    if (!report) return;
+    $("extras").innerHTML = "";
+
+    const rows = report.extraBridgeLikeGlobals;
+
+    if (!rows.length) {
+      $("extras").innerHTML =
+        '<tr><td colspan="3">Tidak ada nama global yang cocok dengan pola pencarian.</td></tr>';
+      return;
+    }
+
+    for (const item of rows) {
+      const tr = document.createElement("tr");
+      const name = document.createElement("td");
+      const kind = document.createElement("td");
+      const loc = document.createElement("td");
+
+      name.textContent = item.name;
+      kind.textContent = item.kind;
+      loc.textContent = item.location + (item.error ? " — " + item.error : "");
+
+      tr.append(name, kind, loc);
+      $("extras").appendChild(tr);
+    }
+  }
+
+  $("scanBtn").addEventListener("click", scan);
+  $("filterText").addEventListener("input", renderResults);
+  $("filterStatus").addEventListener("change", renderResults);
+
+  $("jsonBtn").addEventListener("click", () => {
+    if (!report) scan();
+
+    const blob = new Blob(
+      [JSON.stringify(report, null, 2)],
+      { type: "application/json" }
+    );
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "mobile-bridge-scan.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  $("copyBtn").addEventListener("click", async () => {
+    if (!report) scan();
+
+    const text = JSON.stringify(report, null, 2);
+
+    try {
+      await navigator.clipboard.writeText(text);
+      $("copyBtn").textContent = "JSON tersalin";
+      setTimeout(() => $("copyBtn").textContent = "Salin JSON", 1500);
+    } catch (_) {
+      $("jsonOutput").textContent = text;
+      alert("Clipboard tidak tersedia. Salin JSON dari panel laporan.");
+    }
+  });
+
+  scan();
+})();
+</script>
+</body>
+</html>
